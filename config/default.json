@@ -1,0 +1,6 @@
+{
+  "jwtPrivateKey": "",
+  "db": "mongodb://localhost/swimclub",
+  "port": "",
+  "logDir": ""
+}

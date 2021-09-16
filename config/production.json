@@ -1,0 +1,6 @@
+{
+  "jwtPrivateKey": "sscm_secret",
+  "db": "mongodb://localhost/swimclub",
+  "port": "",
+  "logDir": ""
+}

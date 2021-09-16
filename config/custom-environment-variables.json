@@ -1,0 +1,4 @@
+{
+  "jwtPrivateKey": "sscm_secret",
+  "logDir": "sscm_log_directory"
+}

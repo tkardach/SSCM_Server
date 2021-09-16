@@ -1,0 +1,6 @@
+{
+  "jwtPrivateKey": "test_secret",
+  "db": "mongodb://localhost/server_test",
+  "port": "0",
+  "logDir": ""
+}
