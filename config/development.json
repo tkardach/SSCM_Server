@@ -2,5 +2,8 @@
   "jwtPrivateKey": "secret_key",
   "db": "mongodb://localhost/swimclub-dev",
   "port": "7777",
-  "logDir": ""
+  "logDir": "",
+  "sheetId": "",
+  "serviceKey": "",
+  "sheetAPIKey": ""
 }

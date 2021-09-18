@@ -1,4 +1,4 @@
-const {StringConstants} = require('../../shared/strings');
+const {GoogleAPIScopes} = require('./scopes');
 const {google, networkmanagement_v1beta1} = require('googleapis');
 const {generateJwtClient} = require('./general');
 const {logError} = require('../../debug/logging');
@@ -7,7 +7,7 @@ const _ = require('lodash');
 
 
 // Initialize constants
-const SCOPES = [StringConstants.Sheets.Scopes.SheetsR];
+const SCOPES = [GoogleAPIScopes.Sheets.Scopes.SheetsR];
 
 
 function checkEmpty(value) {
@@ -292,7 +292,153 @@ async function getAllAccountsDict() {
 
 //#endregion
 
+
+//#region Signin Methods
+
+const SIGNIN_INDICES = {
+  Timestamp: 0,
+  LastName: 1,
+  CertificateNumber: 2,
+  NumberOfMembers: 3,
+  NumberOfGuests: 4,
+  DropOffKids: 5,
+  FamilyMembers: 6,
+  Type: 7,
+  PrimaryPhone: 8,
+  PrimaryEmail: 9,
+  SecondaryPhone: 10,
+  SecondaryEmail: 11
+}
+
+
+function generateSignin(sheetsSignin) {
+  return {
+    id: sheetsSignin[SIGNIN_INDICES.CertificateNumber] + sheetsSignin[SIGNIN_INDICES.Type],
+    ts: new Date(sheetsSignin[SIGNIN_INDICES.Timestamp]),
+    lastName: sheetsSignin[SIGNIN_INDICES.LastName],
+    type: sheetsSignin[SIGNIN_INDICES.Type],
+    droppedOffKids: sheetsSignin[SIGNIN_INDICES.DropOffKids],
+    familyMembers: sheetsSignin[SIGNIN_INDICES.FamilyMembers],
+    numberOfMembers: sheetsSignin[SIGNIN_INDICES.NumberOfMembers],
+    numberOfGuests: sheetsSignin[SIGNIN_INDICES.NumberOfGuests],
+    primaryPhone: sheetsSignin[SIGNIN_INDICES.PrimaryPhone],
+    secondaryPhone: sheetsSignin[SIGNIN_INDICES.SecondaryPhone],
+    primaryEmail: sheetsSignin[SIGNIN_INDICES.PrimaryEmail] ? sheetsSignin[SIGNIN_INDICES.PrimaryEmail].toLowerCase().trim() : '',
+    secondaryEmail: sheetsSignin[SIGNIN_INDICES.SecondaryEmail] ? sheetsSignin[SIGNIN_INDICES.SecondaryEmail].toLowerCase().trim() : '',
+  }
+}
+
+function convertSignins(sheetsSignins) {
+  const signins = [];
+
+  sheetsSignins.forEach(si => {
+      const newSignin = generateSignin(si);
+      
+      signins.push(newSignin);
+  });
+
+  return signins;
+}
+
+function convertSigninsLite(sheetsSignins) {
+  const signins = [];
+
+  sheetsSignins.forEach(si => {
+      const newSignin = {
+          id: si[SIGNIN_INDICES.CertificateNumber] + si[SIGNIN_INDICES.Type],
+          ts: new Date(si[SIGNIN_INDICES.Timestamp]),
+          numberOfMembers: si[SIGNIN_INDICES.NumberOfMembers],
+          numberOfGuests: si[SIGNIN_INDICES.NumberOfGuests],
+          droppedOffKids: si[SIGNIN_INDICES.DropOffKids]
+      }
+
+      signins.push(newSignin);
+  });
+
+  return signins;
+}
+
+function convertSigninsLiteDict(sheetsSignins) {
+  const signins = {};
+
+  sheetsSignins.forEach(si => {
+      const newSignin = {
+        id: si[SIGNIN_INDICES.CertificateNumber] + si[SIGNIN_INDICES.Type],
+        ts: new Date(si[SIGNIN_INDICES.Timestamp]),
+        numberOfMembers: si[SIGNIN_INDICES.NumberOfMembers],
+        numberOfGuests: si[SIGNIN_INDICES.NumberOfGuests],
+        droppedOffKids: si[SIGNIN_INDICES.DropOffKids]
+      }
+
+      signins[newSignin.id] = newSignin;
+  });
+
+  return signins;
+}
+
+function convertSigninsDict(sheetsSignins) {
+  const signins = {};
+
+  sheetsSignins.forEach(si => {
+      const newSignin = {
+        id: si[SIGNIN_INDICES.CertificateNumber] + si[SIGNIN_INDICES.Type],
+        ts: new Date(si[SIGNIN_INDICES.Timestamp]),
+        lastName: si[SIGNIN_INDICES.LastName],
+        type: si[SIGNIN_INDICES.Type],
+        droppedOffKids: si[SIGNIN_INDICES.DropOffKids],
+        familyMembers: si[SIGNIN_INDICES.FamilyMembers],
+        numberOfMembers: si[SIGNIN_INDICES.NumberOfMembers],
+        numberOfGuests: si[SIGNIN_INDICES.NumberOfGuests],
+        primaryPhone: si[SIGNIN_INDICES.PrimaryPhone],
+        secondaryPhone: si[SIGNIN_INDICES.SecondaryPhone],
+        primaryEmail: si[SIGNIN_INDICES.PrimaryEmail] ? si[SIGNIN_INDICES.PrimaryEmail].toLowerCase().trim() : '',
+        secondaryEmail: si[SIGNIN_INDICES.SecondaryEmail] ? si[SIGNIN_INDICES.SecondaryEmail].toLowerCase().trim() : '',
+      }
+
+      signins[newSignin.id] = newSignin;
+  });
+
+  return signins;
+}
+
+async function getAllSheetsSignins() {
+  let jwtClient = await generateJwtClient(SCOPES);
+  const sheets = google.sheets({version: 'v4', jwtClient});
+
+  try {
+      const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: config.get('sheetId'),
+          range: 'SignIn!A2:M',
+          key: config.get('sheetAPIKey')
+      });
+
+      return res.data.values;
+  } catch (err) {
+      logError(err, `Failed to retrieve signins from google sheet\n${err}`);
+      return null;
+  }
+}
+
+async function getAllSignins(lite) {
+  const sheetsSignins = await sheets.getAllSheetsSignins();
+
+  return lite ? convertSigninsLite(sheetsSignins) : 
+                convertSignins(sheetsSignins);
+}
+
+async function getAllSigninsDict(lite) {
+  const sheetsSignins = await sheets.getAllSheetsSignins();
+
+  return lite ? convertSigninsLiteDict(sheetsSignins) : 
+                convertSigninsDict(sheetsSignins);
+}
+
+//#endregion
+
 const sheets = {
+    getAllSheetsSignins,
+    getAllSignins,
+    getAllSigninsDict,
     getAllSheetsMembers,
     getAllMembers,
     getAllMembersDict,

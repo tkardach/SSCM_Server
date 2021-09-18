@@ -1,5 +1,5 @@
 require('../../shared/extensions');
-const { StringConstants} = require('../../shared/strings');
+const {GoogleAPIScopes} = require('./scopes');
 const config = require('config');
 const {google, GoogleApis} = require('googleapis');
 const calendar = google.calendar('v3');
@@ -7,7 +7,7 @@ const {generateJwtClient} = require('./general');
 const {logError} = require('../../debug/logging');
 
 // Initialize constants
-const SCOPES = [StringConstants.Calendar.Scopes.EventsRW];
+const SCOPES = [GoogleAPIScopes.Calendar.Scopes.EventsRW];
 
 
 /**

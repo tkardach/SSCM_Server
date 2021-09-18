@@ -7,10 +7,12 @@
  */
 
  const authentication = require('../routes/auth');
+ const statistics = require('../routes/statistics');
  const error = require('../middleware/error');
  
  module.exports = function (app) {
    app.use('/api/authenticate', authentication);
+   app.use('/api/statistics', statistics);
  
    // Error handling middleware
    app.use(error);
