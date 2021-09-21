@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
-const config = require('config');
-const cors = require('cors')
+const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 function uuidv4() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -9,6 +9,8 @@ function uuidv4() {
     return v.toString(16);
   });
 }
+
+app.use(cookieParser());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
