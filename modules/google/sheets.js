@@ -2,7 +2,9 @@ const {GoogleAPIScopes} = require('./scopes');
 const {google, networkmanagement_v1beta1} = require('googleapis');
 const {generateJwtClient} = require('./general');
 const {logError} = require('../../debug/logging');
+const {uuidv4} = require('../../shared/utility');
 const config = require('config');
+const mcache = require('memory-cache');
 const _ = require('lodash');
 
 
@@ -157,6 +159,13 @@ function convertMembersLiteDict(sheetsMembers) {
 }
 
 async function getAllSheetsMembers() {
+    const key = '__express__' + 'getAllSheetsMembers';
+
+    const cachedBody = mcache.get(key);
+
+    if (cachedBody) 
+      return cachedBody
+
     let jwtClient = await generateJwtClient(SCOPES);
     const sheets = google.sheets({version: 'v4', jwtClient});
 
@@ -164,9 +173,12 @@ async function getAllSheetsMembers() {
         const res = await sheets.spreadsheets.values.get({
             spreadsheetId: config.get('sheetId'),
             range: 'Members!A2:S',
-            key: config.get('sheetAPIKey')
+            key: config.get('sheetAPIKey'),
+            quotaUser: uuidv4()
         });
 
+        
+        mcache.put(key, res.data.values, 300000);
         return res.data.values;
     } catch (err) {
         logError(err, `Failed to retrieve members from google sheet\n${err}`);
@@ -238,9 +250,9 @@ function generateAccount(sheetsAccount) {
 }
 
 function accountAcceptable(account) {
-    return  account.lastName !== '' &&
-            isNaN(account.lastName) &&
-            !isNaN(account.certificateNumber);
+  return  account.lastName !== '' &&
+          account.type !== '' &&
+          account.certificateNumber !== '';
 }
 
 function convertAccounts(sheetsAccounts) {
@@ -265,7 +277,49 @@ function convertAccountsDict(sheetsAccounts) {
     return accounts;
 }
 
+function convertAccountsLite(sheetsAccounts) {
+    const accounts = [];
+    sheetsAccounts.forEach(acc => {
+        if (accountAcceptable(acc)) {
+          const newAccount = {
+              id: acc[ACCOUNT_INDICES.CertificateNumber] + acc[ACCOUNT_INDICES.Type],
+              moneyOwed: !checkEmpty(acc[ACCOUNT_INDICES.MoneyOwed]),
+              eligibleToReserve: !checkEmpty(acc[ACCOUNT_INDICES.EligibleToReserve])
+          }
+  
+          accounts.push(newAccount);
+        }
+    });
+
+    return accounts;
+}
+
+function convertAccountsDictLite(sheetsAccounts) {
+    const accounts = {};
+    sheetsAccounts.forEach(acc => {
+      if (accountAcceptable(acc)) {
+        const newAccount = {
+            id: acc[ACCOUNT_INDICES.CertificateNumber] + acc[ACCOUNT_INDICES.Type],
+            moneyOwed: !checkEmpty(acc[ACCOUNT_INDICES.MoneyOwed]),
+            eligibleToReserve: !checkEmpty(acc[ACCOUNT_INDICES.EligibleToReserve])
+        }
+
+        if (accountAcceptable(newAccount))
+            accounts[newAccount.id] = newAccount;
+      }
+    });
+
+    return accounts;
+}
+
 async function getAllSheetsAccounts() {
+    const key = '__express__' + 'getAllSheetsAccounts';
+
+    const cachedBody = mcache.get(key);
+
+    if (cachedBody) 
+      return cachedBody
+
     let jwtClient = await generateJwtClient(SCOPES);
     const sheets = google.sheets({version: 'v4', jwtClient});
 
@@ -273,8 +327,11 @@ async function getAllSheetsAccounts() {
         const res = await sheets.spreadsheets.values.get({
             spreadsheetId: config.get('sheetId'),
             range: 'Accounts!A4:AR',
-            key: config.get('sheetAPIKey')
+            key: config.get('sheetAPIKey'),
+            quotaUser: uuidv4()
         });
+
+        mcache.put(key, res.data.values, 3600000);
         return res.data.values;
     } catch (err) {
         logError(err, `Failed to retrieve members from google sheet\n${err}`);
@@ -282,16 +339,117 @@ async function getAllSheetsAccounts() {
     }
 }
 
-async function getAllAccounts() {
-    return convertAccounts(await sheets.getAllSheetsAccounts());
+async function getAllAccounts(lite) {
+    return lite ? convertAccountsLite(await sheets.getAllSheetsAccounts()) :
+                  convertAccounts(await sheets.getAllSheetsAccounts());
 }
 
-async function getAllAccountsDict() {
-    return convertAccountsDict(await sheets.getAllSheetsAccounts());
+async function getAllAccountsDict(lite) {
+    return lite ? convertAccountsDictLite(await sheets.getAllSheetsAccounts()) :
+                  convertAccountsDict(await sheets.getAllSheetsAccounts());
 }
 
 //#endregion
 
+//#region Over-Due Methods
+
+const OVERDUE_INDICES = {
+  MemberNumber: 2,
+  TotalOwed: 4,
+  StartUpFee: 5,
+  EquityShare: 6,
+  UnpaidCarryOver: 7,
+  MembershipDues: 8,
+  LateFee: 9,
+  WorkDayFee: 10,
+  GuestFee: 11,
+  NannyFee: 12,
+  AssessmentFee: 13,
+  MembershipType: 17
+}
+
+function generateFees(sheetsOverdue) {
+  return {
+      certificateNumber: sheetsOverdue[OVERDUE_INDICES.MemberNumber],
+      id: sheetsOverdue[OVERDUE_INDICES.MemberNumber] + sheetsOverdue[OVERDUE_INDICES.MembershipType],
+      totalOwed: sheetsOverdue[OVERDUE_INDICES.TotalOwed],
+      startupFee: sheetsOverdue[OVERDUE_INDICES.StartUpFee],
+      equityShare: sheetsOverdue[OVERDUE_INDICES.EquityShare],
+      unpaidCarryOver: sheetsOverdue[OVERDUE_INDICES.UnpaidCarryOver],
+      membershipDues: sheetsOverdue[OVERDUE_INDICES.MembershipDues],
+      lateFee: sheetsOverdue[OVERDUE_INDICES.LateFee],
+      workdayFee: sheetsOverdue[OVERDUE_INDICES.WorkDayFee],
+      guestFee: sheetsOverdue[OVERDUE_INDICES.GuestFee],
+      nannyFee: sheetsOverdue[OVERDUE_INDICES.NannyFee],
+      assessmentFee: sheetsOverdue[OVERDUE_INDICES.AssessmentFee]
+  }
+}
+
+
+function overdueAcceptable(fees) {
+  return  fees.lastName !== '' &&
+          isNaN(fees.lastName) &&
+          !isNaN(fees.certificateNumber);
+}
+
+function convertOverdue(sheetsOverdue) {
+  const fees = [];
+  sheetsOverdue.forEach(fee => {
+      const newFees = generateFees(fee);
+      if (overdueAcceptable(newFees))
+          fees.push(newFees);
+  });
+
+  return fees;
+}
+
+function convertOverdueDict(sheetsOverdue) {
+  const fees = {};
+  sheetsOverdue.forEach(fee => {
+      const newFees = generateFees(fee);
+      if (overdueAcceptable(newFees))
+          fees[newFees.id] = newFees;
+  });
+
+  return fees;
+}
+
+async function getAllSheetsOverdue() {
+  const key = '__express__' + 'getAllSheetsOverdue';
+
+  const cachedBody = mcache.get(key);
+
+  if (cachedBody) 
+    return cachedBody
+
+  let jwtClient = await generateJwtClient(SCOPES);
+  const sheets = google.sheets({version: 'v4', jwtClient});
+
+  try {
+      const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: config.get('sheetId'),
+          range: 'Over-Due!A4:R',
+          key: config.get('sheetAPIKey'),
+          quotaUser: uuidv4()
+      });
+
+      mcache.put(key, res.data.values, 60000);
+      return res.data.values;
+  } catch (err) {
+      logError(err, `Failed to retrieve overdue from google sheet\n${err}`);
+      return null;
+  }
+}
+
+async function getAllOverdue() {
+  return convertOverdue(await sheets.getAllSheetsOverdue());
+}
+
+async function getAllOverdueDict() {
+  return convertOverdueDict(await sheets.getAllSheetsOverdue());
+}
+
+//#endregion
 
 //#region Signin Methods
 
@@ -402,6 +560,13 @@ function convertSigninsDict(sheetsSignins) {
 }
 
 async function getAllSheetsSignins() {
+  const key = '__express__' + 'getAllSheetsSignins';
+
+  const cachedBody = mcache.get(key);
+
+  if (cachedBody) 
+    return cachedBody
+
   let jwtClient = await generateJwtClient(SCOPES);
   const sheets = google.sheets({version: 'v4', jwtClient});
 
@@ -409,9 +574,11 @@ async function getAllSheetsSignins() {
       const res = await sheets.spreadsheets.values.get({
           spreadsheetId: config.get('sheetId'),
           range: 'SignIn!A2:M',
-          key: config.get('sheetAPIKey')
+          key: config.get('sheetAPIKey'),
+          quotaUser: uuidv4()
       });
 
+      mcache.put(key, res.data.values, 86400000);
       return res.data.values;
   } catch (err) {
       logError(err, `Failed to retrieve signins from google sheet\n${err}`);
@@ -447,8 +614,13 @@ const sheets = {
     getAllSheetsAccounts,
     getAllAccounts,
     getAllAccountsDict,
+    getAllSheetsOverdue,
+    getAllOverdue,
+    getAllOverdueDict,
     ACCOUNT_INDICES,
-    MEMBER_INDICES
+    MEMBER_INDICES,
+    OVERDUE_INDICES,
+    SIGNIN_INDICES
 };
 
 module.exports = sheets;

@@ -1,36 +1,36 @@
 const {securityLogger} = require('../debug/logging');
-const {User} = require('../models/user');
+const jwt = require('jsonwebtoken');
+const config = require('config');
 
 async function admin(req, res, next) {
-  const secMessage = {
-    body: req.body,
-    origin: req.headers.origin
-  }
-  if (!(req.user && req.user.isAdmin && req.user.email)) {
+  const token = req.cookies.token;
+
+  if (!token) {
     securityLogger.log({
       level: 'warn',
-      message: secMessage
+      message: 'status 403 : Access Denied',
+      meta: [req.body]
     });
-    return res.status(403).send('Access denied.');
+    
+    return res.status(403).send("Access Denied");
   }
+  
+  try {
+    const decoded = jwt.verify(token, config.get('jwtPrivateKey'));
+    req.user = decoded;
 
-  const user = await User.findOne({email: req.user.email.toLowerCase()});
-  if (!(user && user.isAdmin)) {
+    if (!(req.user.user_id && req.user.is_admin && req.user.member_id))
+      return res.status(403).send("Access Denied");
+  } catch (err) {
     securityLogger.log({
       level: 'warn',
-      message: secMessage
+      message: 'status 401 : Invalid Token',
+      meta: [token]
     });
-    return res.status(403).send('Access denied.');
+    return res.status(401).send("Invalid Token");
   }
 
-  next();
+  return next();
 }
 
-function checkAdmin(req, res, next) {
-  req.isAdmin = req.user && req.user.isAdmin;
-
-  next();
-}
-
-module.exports.admin = admin; 
-module.exports.checkAdmin = checkAdmin; 
+module.exports = admin; 

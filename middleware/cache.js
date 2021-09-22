@@ -3,6 +3,7 @@ const mcache = require('memory-cache');
 function cache(duration) {
   return (req, res, next) => {
     const key = '__express__' + req.originalUrl || req.url;
+
     const cachedBody = mcache.get(key);
 
     if (cachedBody) {

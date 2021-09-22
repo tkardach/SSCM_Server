@@ -15,7 +15,7 @@ module.exports = async function () {
   .then(() => {
     logger.log({
       level: 'info',
-      message: 'Connected to MongoDB database.'
+      message: `Connected to MongoDB database ${db}.`
     });
   })
   .catch((err) => {
