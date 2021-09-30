@@ -373,15 +373,17 @@ function generateFees(sheetsOverdue) {
       certificateNumber: sheetsOverdue[OVERDUE_INDICES.MemberNumber],
       id: sheetsOverdue[OVERDUE_INDICES.MemberNumber] + sheetsOverdue[OVERDUE_INDICES.MembershipType],
       totalOwed: sheetsOverdue[OVERDUE_INDICES.TotalOwed],
-      startupFee: sheetsOverdue[OVERDUE_INDICES.StartUpFee],
-      equityShare: sheetsOverdue[OVERDUE_INDICES.EquityShare],
-      unpaidCarryOver: sheetsOverdue[OVERDUE_INDICES.UnpaidCarryOver],
-      membershipDues: sheetsOverdue[OVERDUE_INDICES.MembershipDues],
-      lateFee: sheetsOverdue[OVERDUE_INDICES.LateFee],
-      workdayFee: sheetsOverdue[OVERDUE_INDICES.WorkDayFee],
-      guestFee: sheetsOverdue[OVERDUE_INDICES.GuestFee],
-      nannyFee: sheetsOverdue[OVERDUE_INDICES.NannyFee],
-      assessmentFee: sheetsOverdue[OVERDUE_INDICES.AssessmentFee]
+      dues: [
+        {name: "Membership Dues", amount: sheetsOverdue[OVERDUE_INDICES.MembershipDues]},
+        {name: "Unpaid Carryover", amount: sheetsOverdue[OVERDUE_INDICES.UnpaidCarryOver]},
+        {name: "Startup Fee", amount: sheetsOverdue[OVERDUE_INDICES.StartUpFee]},
+        {name: "Late Fee", amount: sheetsOverdue[OVERDUE_INDICES.LateFee]},
+        {name: "Nanny Fee", amount: sheetsOverdue[OVERDUE_INDICES.NannyFee]},
+        {name: "Guest Fee", amount: sheetsOverdue[OVERDUE_INDICES.GuestFee]},
+        {name: "Workday Fee", amount: sheetsOverdue[OVERDUE_INDICES.WorkDayFee]},
+        {name: "Assessment Fee", amount: sheetsOverdue[OVERDUE_INDICES.AssessmentFee]},
+        {name: "Equity Share", amount: sheetsOverdue[OVERDUE_INDICES.EquityShare]}
+      ]
   }
 }
 
