@@ -3,5 +3,6 @@
   "logDir": "sscm_log_directory",
   "sheetId": "sscm_sheets_id",
   "serviceKey": "sscm_google_api_service_key",
-  "sheetAPIKey": "sscm_google_sheets_api_key"
+  "sheetAPIKey": "sscm_google_sheets_api_key",
+  "port": "sscm_server_port"
 }

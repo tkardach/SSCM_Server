@@ -1,5 +1,5 @@
 {
-  "jwtPrivateKey": "sscm_secret",
+  "jwtPrivateKey": "",
   "db": "mongodb://localhost/swimclub",
   "port": "",
   "logDir": "",
