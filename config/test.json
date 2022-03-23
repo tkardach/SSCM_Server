@@ -5,5 +5,7 @@
   "logDir": "",
   "sheetId": "",
   "serviceKey": "",
-  "sheetAPIKey": ""
+  "sheetAPIKey": "",
+  "gmailAccount": "",
+  "gmailPass": ""
 }

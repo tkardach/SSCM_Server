@@ -4,9 +4,32 @@ const User = require('../models/user');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const config = require('config');
+const crypto = require('crypto')
 const auth = require('../middleware/auth');
+const nodemailer = require('nodemailer');
 const sheets = require('../modules/google/sheets');
 const { logError } = require('../debug/logging')
+
+
+const forgot_pw_body = `
+<p>
+You are receiving this because you (or someone else) have requested to reset your Saratoga Swim Club account password.
+Please click on the following link to reset your password
+</p>
+<a href="{0}">{0}</a>
+<p>
+This link will expire in 1 hour. If you did not request this, please ignore this email and your password will remain unchanged.
+</p>
+`
+
+const reset_success_body = `
+<p>
+This is a confirmation that your password has been successfully reset! 
+
+If you did not reset your password, please contact the board of directors.
+</p>
+`
+      
 
 router.get('/jwt', [auth], (req, res) => {
   return res.status(200).json({
@@ -122,5 +145,95 @@ router.get('/logout', [auth], (req, res) => {
 
   res.status(200).send("User logged out successfully");
 });
+
+
+router.post('/forgot', async (req, res) => {
+  try {
+    if (!req.body.email) 
+      return res.status(400).send('Email is required to reset password');
+
+    var token = crypto.randomBytes(20).toString('hex');
+
+    const user = await User.findOneAndUpdate({ email: req.body.email }, {
+      resetPasswordToken: token,
+      resetPasswordExpires: Date.now() + 3600000
+    },{
+      new: true
+    });
+
+    if (!user) 
+      return res.status(404).send('No account with that email address exists.');
+
+    const url = 'https://' + req.headers.host + '/reset-password/' + token;
+
+    var smtpTransport = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: config.get('gmailAccount'),
+        pass: config.get('gmailPass')
+      }
+    });
+
+    var mailOptions = {
+      to: req.body.email,
+      from: config.get('gmailAccount'),
+      subject: 'Saratoga Swim Club Password Reset',
+      html: forgot_pw_body.format(url)
+    };
+
+    await smtpTransport.sendMail(mailOptions);
+  
+    return res.status(200).json('Email sent');
+  } catch (err) {
+    return res.status(500).send(`Error occured while sending email verification: ${err}`);
+  }
+});
+
+router.get('/reset/:token', async (req, res) => {
+  const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
+  if (!user) 
+    return res.status(404).send("Link to password reset not found, please try again.")
+  res.render('reset', {
+    user: req.user
+  });
+});
+
+router.post('/reset/:token', async (req, res, next) => {
+  try {
+    const user = await User.findOne({ resetPasswordToken: req.params.token, resetPasswordExpires: { $gt: Date.now() } });
+    if (!user) 
+      return res.status(404).send("Request for password reset not found, please try again.");
+  
+    user.password = req.body.password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+  
+    await user.save(function(err) {
+      if (err) 
+        return res.status(500).send('Error while attempting to reset password')
+    });
+    
+    var smtpTransport = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: config.get('gmailAccount'),
+        pass: config.get('gmailPass')
+      }
+    });
+
+    var mailOptions = {
+      to: user.email,
+      from: config.get('gmailAccount'),
+      subject: 'Swim Club Password Reset Success',
+      text: reset_success_body
+    };
+    smtpTransport.sendMail(mailOptions);
+  
+    return res.status(200).json('Password Reset');
+  } catch (err) {
+    return res.status(500).send('Error occured during password reset ')
+  }
+});
+
 
 module.exports = router;

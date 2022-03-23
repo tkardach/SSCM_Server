@@ -4,5 +4,7 @@
   "sheetId": "sscm_sheets_id",
   "serviceKey": "sscm_google_api_service_key",
   "sheetAPIKey": "sscm_google_sheets_api_key",
-  "port": "sscm_server_port"
+  "port": "sscm_server_port",
+  "gmailAccount": "sscm_gmail_account",
+  "gmailPass": "sscm_gmail_password"
 }
