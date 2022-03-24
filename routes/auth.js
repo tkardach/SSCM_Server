@@ -164,7 +164,7 @@ router.post('/forgot', async (req, res) => {
     if (!user) 
       return res.status(404).send('No account with that email address exists.');
 
-    const url = 'https://' + req.headers.host + '/reset-password/' + token;
+    const url = 'https://' + req.headers.host + '/api/authenticate/reset/' + token;
 
     var smtpTransport = nodemailer.createTransport({
       service: 'gmail',
